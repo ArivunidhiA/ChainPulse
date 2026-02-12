@@ -1,0 +1,36 @@
+version: 2
+sources:
+  - name: raw
+    description: Raw extracted blockchain events
+    database: "{{ target.dbname }}"
+    schema: public
+    tables:
+      - name: raw_events
+        description: All indexed EVM events (Swap, Transfer)
+        freshness:
+          warn_after: {count: 1, period: hour}
+          error_after: {count: 6, period: hour}
+        loaded_at_field: created_at
+      - name: raw_swaps
+        description: Uniswap V3 Swap events
+        freshness:
+          warn_after: {count: 1, period: hour}
+        loaded_at_field: created_at
+      - name: raw_transfers
+        description: ERC-20 Transfer events
+        freshness:
+          warn_after: {count: 1, period: hour}
+        loaded_at_field: created_at
+      - name: token_prices
+        description: CoinGecko price cache
+      - name: block_checkpoints
+        description: Indexer block checkpoints
+  - name: analytics_raw
+    description: Analytics tables written by Python scripts
+    database: "{{ target.dbname }}"
+    schema: public
+    tables:
+      - name: analytics_wallet_segments
+      - name: analytics_anomalies
+      - name: analytics_token_flows
+      - name: analytics_protocol_health

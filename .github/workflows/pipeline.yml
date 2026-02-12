@@ -1,0 +1,70 @@
+# Full pipeline: indexer → dbt → analysis (writes to Neon).
+# Runs on schedule so the Vercel app has fresh data; no separate backend needed.
+name: pipeline
+on:
+  schedule:
+    - cron: '*/30 * * * *'  # every 30 min
+  workflow_dispatch:
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      ALCHEMY_API_URL: ${{ secrets.ALCHEMY_API_URL }}
+      COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
+      PGHOST: ${{ secrets.PGHOST }}
+      PGPORT: ${{ secrets.PGPORT }}
+      PGUSER: ${{ secrets.PGUSER }}
+      PGPASSWORD: ${{ secrets.PGPASSWORD }}
+      PGDATABASE: ${{ secrets.PGDATABASE }}
+      PGSSLMODE: require
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ hashFiles('backend/requirements.txt') }}
+
+      - name: Install backend deps
+        run: |
+          pip install -r backend/requirements.txt
+          pip install dbt-core dbt-postgres
+
+      - name: Run indexer (one pass)
+        working-directory: backend
+        env:
+          PYTHONPATH: .
+        run: python -c "from indexer.evm_indexer import run_indexer_once; run_indexer_once()"
+        continue-on-error: true
+
+      - name: dbt deps
+        working-directory: dbt_chainpulse
+        run: dbt deps
+
+      - name: dbt run
+        working-directory: dbt_chainpulse
+        run: dbt run
+        continue-on-error: true
+
+      - name: dbt test
+        working-directory: dbt_chainpulse
+        run: dbt test
+        continue-on-error: true
+
+      - name: Run analysis
+        working-directory: backend
+        env:
+          PYTHONPATH: .
+        run: |
+          python -c "from analysis.whale_segmentation import run; run()"
+          python -c "from analysis.volume_anomaly import run; run()"
+          python -c "from analysis.token_flow_analysis import run; run()"
+          python -c "from analysis.protocol_health import run; run()"
+        continue-on-error: true

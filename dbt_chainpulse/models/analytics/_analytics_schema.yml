@@ -1,0 +1,12 @@
+version: 2
+models:
+  - name: agg_hourly_volume
+    description: Hourly volume aggregation per token
+  - name: agg_daily_protocol
+    description: Daily protocol-level metrics
+  - name: wallet_segments
+    description: Whale/retail/bot segments from Python
+  - name: token_flow_summary
+    description: Token flow from Python
+  - name: anomaly_flagged
+    description: Anomaly events from Python

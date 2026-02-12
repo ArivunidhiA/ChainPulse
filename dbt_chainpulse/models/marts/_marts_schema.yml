@@ -1,0 +1,34 @@
+version: 2
+models:
+  - name: fact_swaps
+    description: Production swap facts with enrichments
+    columns:
+      - name: swap_id
+        tests: [unique, not_null]
+      - name: wallet_address
+        tests: [not_null]
+      - name: amount_usd
+        tests: [not_null]
+      - name: event_timestamp
+        tests: [not_null]
+  - name: fact_transfers
+    description: Production transfer facts
+    columns:
+      - name: transfer_id
+        tests: [unique, not_null]
+      - name: amount_usd
+        tests: [not_null]
+  - name: dim_wallets
+    description: Wallet dimension SCD1
+    columns:
+      - name: wallet_address
+        tests: [unique, not_null]
+      - name: segment
+        tests:
+          - accepted_values:
+              values: ['whale', 'active_trader', 'retail', 'bot']
+  - name: dim_tokens
+    description: Token dimension SCD1
+    columns:
+      - name: token_address
+        tests: [unique, not_null]

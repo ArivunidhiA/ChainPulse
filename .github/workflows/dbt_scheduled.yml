@@ -1,0 +1,31 @@
+name: dbt scheduled run
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+jobs:
+  dbt:
+    runs-on: ubuntu-latest
+    env:
+      PGHOST: ${{ secrets.PGHOST }}
+      PGPORT: ${{ secrets.PGPORT }}
+      PGUSER: ${{ secrets.PGUSER }}
+      PGPASSWORD: ${{ secrets.PGPASSWORD }}
+      PGDATABASE: ${{ secrets.PGDATABASE }}
+      PGSSLMODE: require
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dbt
+        run: pip install dbt-core dbt-postgres
+      - name: dbt deps
+        working-directory: dbt_chainpulse
+        run: dbt deps
+      - name: dbt run
+        working-directory: dbt_chainpulse
+        run: dbt run
+      - name: dbt test
+        working-directory: dbt_chainpulse
+        run: dbt test
