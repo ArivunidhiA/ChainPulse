@@ -1,174 +1,224 @@
-# ChainPulse — On-Chain DeFi Analytics Pipeline
+<p align="center"><strong>ChainPulse</strong></p>
+<p align="center">On-chain DeFi analytics pipeline — extract, transform, analyze, visualize.</p>
+<p align="center">
+  <img src="https://img.shields.io/badge/version-1.0.0-blue" alt="version" />
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="license" />
+  <img src="https://img.shields.io/badge/status-production--ready-brightgreen" alt="status" />
+  <img src="https://img.shields.io/badge/Next.js-14-black" alt="Next.js" />
+  <img src="https://img.shields.io/badge/Python-3.12-3776AB" alt="Python" />
+  <img src="https://img.shields.io/badge/dbt-1.8-FF694B" alt="dbt" />
+  <img src="https://img.shields.io/badge/Neon-PostgreSQL-00E5A0" alt="Neon" />
+</p>
 
-Production-grade pipeline that extracts, transforms, and analyzes EVM smart contract events (Uniswap V3, ERC-20) through a modern data stack: **Python + web3.py**, **dbt**, **Neon PostgreSQL**, with statistical analysis and a **Next.js** dashboard.
+---
 
-## Architecture
+## 📑 Table of Contents
 
-```mermaid
-flowchart TB
-  subgraph extraction [Extraction Layer]
-    EVM[EVM Indexer - web3.py]
-    Price[CoinGecko Price Service]
-    Checkpoint[Block Checkpoint Tracker]
-  end
+- [Overview](#-overview)
+- [Features](#-features)
+- [Architecture](#-architecture)
+- [Tech Stack](#-tech-stack)
+- [Quick Start](#-quick-start)
+- [API Reference](#-api-reference)
+- [Deployment](#-deployment)
+- [Project Structure](#-project-structure)
+- [License](#-license)
 
-  subgraph store [Neon PostgreSQL]
-    Raw[raw_events, raw_swaps, raw_transfers]
-    Analytics[analytics_wallet_segments, analytics_anomalies, analytics_token_flows, analytics_protocol_health]
-  end
+---
 
-  subgraph transformation [dbt Transformation]
-    Staging[staging]
-    Intermediate[intermediate]
-    Marts[marts: fact_swaps, fact_transfers, dim_tokens, dim_wallets]
-    Agg[analytics: agg_hourly_volume, agg_daily_protocol]
-  end
+## 🔍 Overview
 
-  subgraph analysis [Analysis Scripts]
-    Whale[whale_segmentation]
-    Anomaly[volume_anomaly]
-    Flow[token_flow_analysis]
-    Health[protocol_health]
-  end
+ChainPulse is a **production-grade data engineering portfolio project** that indexes Ethereum smart contract events (Uniswap V3 swaps, ERC-20 transfers), transforms them through a **Kimball star-schema** data warehouse using dbt, runs statistical analysis (K-means clustering, Z-score anomaly detection, Gini coefficients), and serves insights through a minimal, light-themed **Next.js dashboard**.
 
-  subgraph api [FastAPI]
-    Routes[/api/swaps, /whales, /volume, /anomalies, /token-flows, /protocol-health, /stats]
-  end
+**Key highlights:**
+- End-to-end pipeline: extraction → transformation → analysis → visualization
+- Real Ethereum mainnet data via Alchemy RPC + CoinGecko price enrichment
+- Kimball-modeled warehouse: fact tables, dimension tables, incremental models
+- Four analysis modules producing actionable intelligence
+- Clean, production-ready UI with expandable cards and hover interactions
 
-  subgraph dashboard [Next.js Dashboard]
-    UI[Protocol Health, Volume Chart, Whale Table, Anomaly Feed, Token Flows]
-  end
+---
 
-  EVM --> Raw
-  Price --> Raw
-  Checkpoint --> EVM
-  Raw --> Staging --> Intermediate --> Marts --> Agg
-  Marts --> analysis --> Analytics
-  Agg --> api
-  Analytics --> api
-  api --> UI
+## ✨ Features
+
+| Category | Details |
+|---|---|
+| **Data Extraction** | Uniswap V3 Swap events, ERC-20 Transfer events, block checkpointing, CoinGecko USD enrichment |
+| **Data Modeling** | dbt staging → intermediate → marts → analytics, surrogate keys, incremental loads, freshness tests |
+| **Whale Detection** | RFM scoring, K-means clustering (5 segments), bot detection heuristics |
+| **Anomaly Detection** | Rolling Z-score on hourly volume, severity classification (critical/high/medium/low) |
+| **Token Flow Analysis** | Net inflow/outflow per token per hour, accumulation vs distribution labeling |
+| **Protocol Health** | DAU, swap volume, median swap size, Gini coefficient, whale share %, composite health score |
+| **Dashboard** | Expandable KPI cards, volume trend chart, whale table, anomaly feed, token flow table |
+| **Infrastructure** | Vercel serverless deployment, Neon PostgreSQL, GitHub Actions scheduled pipeline |
+
+---
+
+## 🏗 Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        Ethereum Mainnet                             │
+└──────────────┬──────────────────────────────────┬───────────────────┘
+               │ Alchemy RPC                      │ CoinGecko API
+               ▼                                  ▼
+┌──────────────────────────┐        ┌──────────────────────────┐
+│   EVM Indexer (Python)   │        │   Price Service (Python)  │
+│  web3.py + block tracker │        │   5-min cache + DB write  │
+└──────────┬───────────────┘        └──────────┬───────────────┘
+           │                                   │
+           ▼                                   ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                     Neon PostgreSQL                                  │
+│  raw_events │ raw_swaps │ raw_transfers │ token_prices │ checkpoints │
+└──────────────────────────┬──────────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                     dbt Transformation                               │
+│  staging → intermediate → marts (fact_swaps, dim_tokens, dim_wallets)│
+│                        → analytics (agg_hourly_volume, agg_daily)    │
+└──────────────────────────┬──────────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                   Python Analysis Scripts                             │
+│  whale_segmentation │ volume_anomaly │ token_flows │ protocol_health │
+│         ↓                  ↓               ↓               ↓         │
+│  analytics_wallet_segments │ analytics_anomalies │ analytics_token_*  │
+└──────────────────────────┬──────────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│               Next.js 14 (Vercel)                                    │
+│  Route Handlers (/api/*) → React Dashboard (Tailwind + Recharts)     │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-- **Extraction**: Uniswap V3 Swap + ERC-20 Transfer events (Alchemy RPC), block checkpoints, CoinGecko price enrichment.
-- **Transformation**: dbt staging → intermediate → marts → analytics; Kimball-style star schema (fact_swaps, fact_transfers, dim_tokens, dim_wallets).
-- **Analysis**: K-means whale segmentation, Z-score volume anomalies, token flow, Gini-based protocol health → `analytics_*` tables.
-- **Serving**: FastAPI with APScheduler (indexer every 15s, dbt every 30min, analysis every hour).
+| Component | Role | Tech |
+|---|---|---|
+| EVM Indexer | Fetches Swap + Transfer events from Ethereum | Python, web3.py, Alchemy |
+| Price Service | USD enrichment with caching | Python, httpx, CoinGecko |
+| Data Warehouse | Star-schema transformation | dbt-core, dbt-postgres |
+| Analysis Engine | Statistical analysis (4 modules) | scikit-learn, scipy, pandas |
+| API Layer | Serverless REST endpoints | Next.js Route Handlers |
+| Dashboard | Interactive analytics UI | React, Tailwind, Recharts, Framer Motion |
+| Database | Serverless PostgreSQL | Neon |
+| CI/CD | Scheduled pipeline runs | GitHub Actions |
 
-## Tech stack
+---
 
-- **Backend**: Python 3.11, FastAPI, web3.py, APScheduler, psycopg2, scikit-learn, pandas
-- **Warehouse**: Neon PostgreSQL (or local Postgres via Docker)
-- **Transform**: dbt-core, dbt-postgres
-- **Frontend**: Next.js 14, TypeScript, Tailwind, Recharts
-- **Infra**: Docker Compose (local), Vercel (app + API), GitHub Actions (pipeline)
+## 🛠 Tech Stack
 
-## Run locally (quick)
+**Backend** — Python 3.12 · web3.py · scikit-learn · pandas · scipy · psycopg2 · httpx
 
-1. **Start Postgres** (Docker): `docker compose up -d db`  
-   Then apply schema: `psql "postgresql://postgres:postgres@localhost:5432/chainpulse" -f backend/db/schema.sql`
+**Data** — dbt-core 1.8 · dbt-postgres · Neon PostgreSQL
 
-2. **Frontend** already has `frontend/.env` with `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/chainpulse`.  
-   If you use Neon instead, replace `DATABASE_URL` in `frontend/.env` with your Neon connection string.
+**Frontend** — Next.js 14 · TypeScript · Tailwind CSS · Recharts · Framer Motion · Lucide Icons
 
-3. **Start the app**: `cd frontend && npm install && npm run dev`  
-   Open **http://localhost:3000**
+**Infrastructure** — Vercel (app + API) · Neon (database) · GitHub Actions (pipeline) · Docker Compose (local dev)
 
-Without a running DB (or with an invalid `DATABASE_URL`), the UI loads but API calls will fail. See [scripts/run-local.md](scripts/run-local.md) for the full pipeline (indexer + dbt + analysis) to populate data.
+---
 
-## Setup
+## 🚀 Quick Start
 
-### 1. Environment
-
-Copy `backend/.env.example` to `backend/.env` and set:
-
-- `ALCHEMY_API_URL` — Alchemy Ethereum RPC URL
-- `DATABASE_URL` — Neon Postgres connection string (or `PGHOST`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`, `PGSSLMODE=require` for dbt)
-- `COINGECKO_API_KEY` — optional CoinGecko API key
-- `FRONTEND_ORIGIN` — e.g. `http://localhost:3000` for CORS
-
-Do not commit `.env`; use it for local overrides only.
-
-### 2. Database
-
-Apply the schema (e.g. on Neon):
+**Prerequisites:** Node.js 18+, Git, a Neon database (or Docker for local Postgres)
 
 ```bash
+# 1. Clone
+git clone https://github.com/ArivunidhiA/ChainPulse.git && cd ChainPulse
+
+# 2. Apply database schema (use your Neon connection string)
 psql "$DATABASE_URL" -f backend/db/schema.sql
+
+# 3. (Optional) Seed demo data for instant dashboard
+psql "$DATABASE_URL" -f backend/seed_data.sql
+
+# 4. Configure frontend
+cp frontend/.env.example frontend/.env
+# Edit frontend/.env → set DATABASE_URL to your Neon connection string
+
+# 5. Start the dashboard
+cd frontend && npm install && npm run dev
 ```
 
-### 3. Backend
+Open **http://localhost:3000** — landing page loads immediately. Click "Explore dashboard" to see the analytics.
 
-```bash
-cd backend
-pip install -r requirements.txt
-uvicorn main:app --reload --port 8000
+---
+
+## 📡 API Reference
+
+All endpoints are Next.js Route Handlers (serverless on Vercel).
+
+| Endpoint | Description | Params |
+|---|---|---|
+| `GET /api/health` | Liveness + DB connectivity | — |
+| `GET /api/data-freshness` | Seconds since last indexed event | — |
+| `GET /api/stats` | Dashboard summary (volume, wallets, swaps, anomalies) | — |
+| `GET /api/swaps` | Paginated swap records | `limit`, `offset`, `token_address`, `wallet_address` |
+| `GET /api/whales` | Wallet segments (RFM + K-means) | `limit`, `offset`, `segment` |
+| `GET /api/volume` | Hourly volume time series | `limit`, `token_address` |
+| `GET /api/anomalies` | Z-score flagged anomalies | `limit`, `offset`, `severity`, `token_address` |
+| `GET /api/token-flows` | Net token flow per hour | `limit`, `token_address` |
+| `GET /api/protocol-health` | Daily health KPIs | `limit` |
+
+---
+
+## 🌐 Deployment
+
+**Vercel** (frontend + API):
+1. Import repo at [vercel.com/new](https://vercel.com/new)
+2. Set **Root Directory** → `frontend`
+3. Add env variable: `DATABASE_URL` = your Neon connection string
+4. Deploy
+
+**GitHub Actions** (data pipeline):
+Add these secrets in repo **Settings → Secrets → Actions**:
+- `DATABASE_URL` — Neon connection string
+- `ALCHEMY_API_URL` — Alchemy Ethereum RPC
+- `COINGECKO_API_KEY` — CoinGecko API key
+- `PGHOST`, `PGUSER`, `PGPASSWORD`, `PGDATABASE` — for dbt
+
+Full guide: **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**
+
+---
+
+## 📁 Project Structure
+
+```
+ChainPulse/
+├── backend/
+│   ├── indexer/          # EVM event indexer (web3.py)
+│   ├── analysis/         # 4 analysis modules (whale, anomaly, flow, health)
+│   ├── db/               # Schema, connection pool, query helpers
+│   └── seed_data.sql     # Demo data seed script
+├── dbt_chainpulse/
+│   ├── models/
+│   │   ├── staging/      # Raw data cleaning + dedup
+│   │   ├── intermediate/ # Enriched joins
+│   │   ├── marts/        # Star schema (facts + dimensions)
+│   │   └── analytics/    # Aggregations + views
+│   ├── seeds/            # known_tokens.csv
+│   └── tests/            # Custom data quality tests
+├── frontend/
+│   ├── app/              # Next.js pages + API route handlers
+│   ├── components/       # Dashboard widgets (5 panels)
+│   └── lib/              # DB client, API helpers, utils
+├── .github/workflows/    # CI/CD: scheduled pipeline + dbt runs
+└── docs/                 # Deployment guide
 ```
 
-From the project root, run with Python path:
+---
 
-```bash
-cd backend && PYTHONPATH=. uvicorn main:app --reload --port 8000
-```
+## 📄 License
 
-### 4. dbt
+MIT — see [LICENSE](LICENSE) for details.
 
-```bash
-cd dbt_chainpulse
-export PGHOST=... PGUSER=... PGPASSWORD=... PGDATABASE=... PGSSLMODE=require
-dbt deps
-dbt seed
-dbt run
-dbt test
-```
+---
 
-### 5. Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Set `NEXT_PUBLIC_API_URL=http://localhost:8000` if the API is not proxied. The app uses Next.js rewrites so `/api/*` can target the backend when same-origin.
-
-## Deployment (Vercel + Neon)
-
-See **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** for step-by-step deployment.
-
-- **Neon**: Create project, run `backend/db/schema.sql`, add the connection string as `DATABASE_URL` in Vercel.
-- **Vercel**: Set root to `frontend`, add `DATABASE_URL` (Neon). The app and all API routes run on Vercel (no separate backend).
-- **GitHub Actions**: Add secrets (`DATABASE_URL`, `ALCHEMY_API_URL`, and PGHOST/PGUSER/PGPASSWORD/PGDATABASE for dbt). The pipeline (indexer, dbt, analysis) runs on a schedule and writes to Neon.
-
-## Docker (local Postgres + backend)
-
-```bash
-docker compose up -d db
-# Apply schema to local DB, then:
-docker compose up -d backend
-```
-
-Backend will use `DATABASE_URL=postgresql://postgres:postgres@db:5432/chainpulse` from compose; mount `dbt_chainpulse` for scheduled dbt runs.
-
-## API
-
-- `GET /api/health` — liveness + DB
-- `GET /api/data-freshness` — seconds since last indexed event
-- `GET /api/stats` — dashboard summary (volume, wallets, swaps, anomalies)
-- `GET /api/swaps` — paginated swaps (optional: token_address, wallet_address)
-- `GET /api/whales` — wallet segments (optional: segment)
-- `GET /api/volume` — hourly volume time series
-- `GET /api/anomalies` — flagged anomalies (optional: severity)
-- `GET /api/token-flows` — net flow per token
-- `GET /api/protocol-health` — daily health KPIs
-
-## Project layout
-
-- `backend/` — FastAPI, indexer, analysis, db, scheduler
-- `dbt_chainpulse/` — dbt project (staging, intermediate, marts, analytics)
-- `frontend/` — Next.js app and dashboard components
-- `docs/DEPLOYMENT.md` — deployment guide (Vercel + Neon, GitHub Actions pipeline)
-- `ChainPulse_PRD_v2.md` — product requirements
-
-## License
-
-MIT.
+<p align="center">
+  Built by <a href="https://arivfolio.tech">Arivunidhi</a> · 
+  <a href="https://github.com/ArivunidhiA">GitHub</a> · 
+  <a href="https://www.linkedin.com/in/arivunidhi-anna-arivan/">LinkedIn</a> · 
+  <a href="https://x.com/Ariv_2012">𝕏</a>
+</p>
