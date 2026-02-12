@@ -1,4 +1,4 @@
-import { ArrowUpRight, Github, Linkedin, Twitter, Globe, Mail } from 'lucide-react';
+import { ArrowUpRight, Github, Linkedin, Twitter, Globe, Mail, GitFork } from 'lucide-react';
 import Link from 'next/link';
 
 export default function Home() {
@@ -31,6 +31,35 @@ export default function Home() {
                 </Link>
               </div>
             </div>
+          </div>
+
+          {/* Powered-by strip */}
+          <div className="mx-auto mt-4 flex max-w-2xl flex-col items-center gap-1.5 text-center">
+            <p className="text-[11px] leading-relaxed tracking-wide text-muted-foreground/60">
+              Powered by live Ethereum data via{' '}
+              <a href="https://www.alchemy.com/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground/80 underline decoration-muted-foreground/30 underline-offset-2 transition-colors hover:text-foreground">Alchemy</a>
+              {' · '}
+              <a href="https://www.coingecko.com/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground/80 underline decoration-muted-foreground/30 underline-offset-2 transition-colors hover:text-foreground">CoinGecko</a>
+              {' · '}
+              <a href="https://neon.tech/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground/80 underline decoration-muted-foreground/30 underline-offset-2 transition-colors hover:text-foreground">Neon</a>
+              {' · '}
+              <a href="https://www.getdbt.com/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground/80 underline decoration-muted-foreground/30 underline-offset-2 transition-colors hover:text-foreground">dbt</a>
+              {' · '}
+              <a href="https://vercel.com/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground/80 underline decoration-muted-foreground/30 underline-offset-2 transition-colors hover:text-foreground">Vercel</a>
+            </p>
+            <p className="text-[10px] tracking-wide text-muted-foreground/40">
+              Get your own API keys and{' '}
+              <a
+                href="https://github.com/ArivunidhiA/ChainPulse"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-0.5 text-muted-foreground/60 underline decoration-muted-foreground/30 underline-offset-2 transition-colors hover:text-foreground"
+              >
+                <GitFork className="inline size-[10px]" strokeWidth={1.8} />
+                fork the repo
+              </a>
+              {' '}to try it out
+            </p>
           </div>
         </div>
       </section>
